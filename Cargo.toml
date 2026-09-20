@@ -1,0 +1,16 @@
+[package]
+name = "kui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+colored = "2"
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
+# is-terminal = "0.4"
+
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3

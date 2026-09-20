@@ -1,0 +1,295 @@
+Program        = { TopLevelItem } ;
+
+TopLevelItem   = ImportStmt
+                | ClassDecl
+                | FunctionDecl
+                | VarDecl
+                | StructDecl
+                | EnumDecl
+                | TupleStructDecl
+                ;
+(* ---------------- *)
+(*  IMPORT SYNTAX   *)
+(* ---------------- *)
+
+ImportStmt          = "lo" (StringLiteral ["?" Identifier] | Identifier ["?" Identifier]) [ ";" ] ;
+
+(* ---------------- *)
+(*  FUNCTIONS       *)
+(* ---------------- *)
+
+BlockFlag   = ";" [ VisibilityMarker ]
+
+FunctionDecl   = "àtiṣe" [ TypeHint ] Identifier "(" [ ParamList ] ")" 
+                 [ BlockFlag ]
+                 Block ;
+
+
+
+CalledFuncOrMeth = Identifier "(" [ Literal | MathExpr { "," Literal | MathExpr } ]  ")" ;
+
+FunctionCall   = "pe" CalledFuncOrMeth [ ";" ] ;
+
+ParamList      = Param { "," Param } ;
+Param          = Identifier TypeHint;
+
+TypeHint       = "soso" | "aléfòó" | "àlọ́po"               /* soso => integal, aléfòó => float, àlọ́po => dooble */
+                | "8w" | "16w" | "32w" | "64w" | "ìtó_w"    /* these are i8, i6, i32, i64 and isize
+                | "8j" | "16j" | "32j" | "64j" | "ìtó_j"   /* unsigned */
+                | "àjámì" | "ọsán"                          /* àjámì = char, ọsán = string */
+                | "ìdésì" | "pooro" | "àdájọ́" | "àkókò"     /* ìdésì = boolean, pooro = array, àdájọ́ = date, àkókò = time */
+                | "atọ́kàa" | "ohun" ;                       /* atọ́kàa = Pointer, ohun = Object */
+
+VisibilityMarker     = "gbangba" ;
+
+Block          = "{" { Statement } "}" ;
+
+(* ---------------- *)
+(*  CLASSES         *)
+(* ---------------- *)
+
+ClassDecl      = "ẹpín" Identifier ( ( "irúfé" Identifier [ BlockFlag ] ExtClassBlock ) | [ BlockFlag ] ClassBlock ) ;
+
+AssignSelfProperty = "kí" Identifier "->" "èyí" ":" Identifier [ ";" ] ;
+
+ConstructorDecl = "::" "(" [ ParamList ] ")"
+                  MethodBlock ;
+ExtConstructorDecl = "::" "(" [ ParamList ] ")"
+                  "{" { ( "&" Identifier "(" Expr { "," Expr  }  ")" ) | MethodStatement } "}" ;
+
+ClassBlocks = "{" ConstructorDecl | { ClassMember } "}" ;
+
+ExtClassBlock     = "{" ExtConstructorDecl | { ClassMember } "}" ;
+
+MethodBlock    = "{" { MethodStatement } "}" ;
+
+MethodDecl     = Identifier "(" [ ParamList ] ")" [TypeHint]
+                 MethodBlock ;
+
+MethodVisi     = "gbangba" ":" | "àdáni" ":" ;  (*  If "gbangba" make the rest of ClassMember public unless "àdáni" is found   *)
+                                                (*  And if "àdáni" make the rest of ClassMember private unless "gbangba" is found   *)
+
+ClassMember    = MethodVisi
+                | MethodDecl
+                | VarDecl
+                ;
+
+MethodStatement = VarDecl
+               | VarAssign
+               | AssignSelfProperty
+               | PrintStmt
+               | MethodDecl
+               | MethodCall
+               | MethodLoopStmt
+               | MethodIfStmt
+               | MethodSwitchStmt
+               | MethodBlock
+               ;
+
+CalledFuncOrMeth = Identifier "(" [ Literal | MathExpr { "," Literal | MathExpr } ]  ")" ;
+
+MethodCall   = "pe" CalledFuncOrMeth [ "->" "èyí"  ] [ ";" ] ;
+
+(* ---------------- *)
+(*  VARIABLES       *)
+(* ---------------- *)
+/* A variable id imutable, and private by default */ ;
+VarFlag         = ";" [ ( "pìkí" [ ","  "gbangba" ] ) | ( "gbangba" ) ]         /* pìkí makes it mutable and gbangba makes it public*/ ;
+
+Pointer         = "~" Identifier ;  /* Memory addresses */
+
+NumberPP        = Number "++" ;
+PPNumber        = "++" Number ;
+NumberMM        = Number "--" ;
+MMNumber        = "--" Number ;
+
+VarDecl         = "kí"
+                    [ TypeHint
+                    | ( "(" TypeHint { "," TypeHint } ")" )
+                    | ( "[" TypeHint ";" Number "]" )
+                    ]
+                    Identifier
+                    ":" ( Expr
+                    | ArrayAssignment
+                    | TupleAssignment
+                    | VectorAssignment
+                    | Pointer
+                    ) 
+                    [ VarFlag ]
+                    ;
+
+VarAssign      = "yí" Identifier ":" ( Expr
+                                    | MathExpr
+                                    | NumberPP
+                                    | PPNumber
+                                    | NumberMM
+                                    | MMNumber
+                                    | Pointer )
+                                    [ ";" ]
+                                    ;
+
+(* ---------------- *)
+(*  STATEMENTS      *)
+(* ---------------- *)
+
+Statement      = VarDecl
+               | VarAssign
+               | PrintStmt
+               | FunctionDecl
+               | FunctionCall
+               | LoopStmt
+               | IfStmt
+               | SwitchStmt
+               | NewObj
+               | Block
+               ;
+
+PrintStmt      = "sọ" Expr [ ";" ] ;
+
+(* ---------------- *)
+(*  LOOPS           *)
+(* ---------------- *)
+
+IfStmt         = "tí" "(" ExtLogicalExpr  ")" Block ;
+MethodIfStmt   = "tí" "(" ExtLogicalExpr  ")" MethodBlock ;
+
+LoopStmt       = WhileLoop | ForLoop | DoWhileLoop;
+MethodLoopStmt = MethodWhileLoop | MethodForLoop | MethodDoWhileLoop;
+
+WhileLoop      = "pòòrì_tí" "(" ExtLogicalExpr ")" Block ;
+MethodWhileLoop      = "pòòrì_tí" "(" ExtLogicalExpr ")" MethodBlock ;
+
+DoWhileLoop    = "ṣe" Block "pòòrì_tí" "(" ExtLogicalExpr ")" ;
+MethodDoWhileLoop    = "ṣe" MethodBlock "pòòrì_tí" "(" ExtLogicalExpr ")" ;
+
+ForLoop        = "fún" "(" ForInit ";" LogicalExpr ";" LogicalExpr ")" Block ;
+MethodForLoop        = "fún" "(" ForInit ";" LogicalExpr ";" LogicalExpr ")" MethodBlock ;
+
+ForInit        = VarDecl | LogicalExpr ;
+
+(* ---------------- *)
+(*  SWITCH          *)
+(* ---------------- *)
+
+SwitchStmt     = "pàrọ̀" "(" Identifier ")" 
+                 "{" { CaseClause } [ DefaultClause ] "}" ;
+MethodSwitchStmt = "pàrọ̀" "(" Identifier ")" 
+                 "{" { MethodCaseClause } [ MethodDefaultClause ] "}" ;
+
+CaseClause     = "ẹjọ́" Expr ":" { Statement } [ "já" ] [";"] ;
+MethodCaseClause     = "ẹjọ́" Expr ":" { MethodStatement } [ "já" ] [";"] ;
+
+DefaultClause  = "àìjẹ́bẹ̀" ":" { Statement } [ "já" ] ;
+MethodDefaultClause  = "àìjẹ́bẹ̀" ":" { MethodStatement } [ "já" ] ;
+
+(* ---------------- *)
+(*  EXPRESSIONS     *)
+(* ---------------- *)
+
+ArrayAssignment = "[" { Number | Identifier }
+                    | { Identifier }
+                    | { CharLiteral | Identifier }
+                    | { BooleanLiteral | Identifier }
+                    "]"
+                    ;
+
+VectorAssignment = "<" { Number | Identifier }
+                    | { Identifier }
+                    | { CharLiteral | Identifier }
+                    | { BooleanLiteral | Identifier }
+                    ">"
+                    ;
+
+TupleAssignment     = "(" { SimpLiteral } ")" ;
+
+Literal         = Number
+                | StringLiteral
+                | MultiLineString 
+                | Identifier
+                | CharLiteral
+                | BooleanLiteral
+                | StructLiteral
+                | TupleLiteral
+                | ArrayLiteral
+                | VectorLiteral
+                ;
+
+SimpLiteral     = Number
+                | StringLiteral 
+                | Identifier
+                | CharLiteral
+                | BooleanLiteral
+                ;
+
+Expr            = Literal
+                | MathExpr 
+                | MemberAccess
+                ;
+
+SimpMathExpr     = ( Number | Identifier ) MathOpr ( Number | Identifier ) { MathOpr ( Number | Identifier ) }  ;
+SimpMathExprBrac = "(" SimpMathExpr  ")" ;
+
+MathExpr        = { SimpMathExpr | SimpMathExprBrac } ;
+
+LogicalExpr     =  SimpLiteral LogicalSign SimpLiteral ;    /* The parser will check if it's a valid logic; it will return an error if not */
+                            /*  Valid logics for Numbers values: >, <, =, !=,   
+                                for strings and char values: =,
+                                The data types most also match*/
+
+ExtLogicalExpr    =  LogicalExpr | ( "!" Identifier ) ;
+
+LogicalSign    = "<" | ">" | "" | "|" | "=" | "!=" | "<=" | ">=" ;
+
+MathOpr        = "+" | "-" | "*" | "%" | "/";
+
+(* ---------------- *)
+(*  OBJECT / METHOD ACCESS  *)
+(* ---------------- *)
+
+EnumStruct     = Identifier "{" ParamList "}" ;
+EnumTuple      = Identifier "(" TypeHint { "," TypeHint } ")"
+
+EnumDecl       = "àkàsílẹ̀" Identifier [ "<" Identifier [ "," Identifier ] ">" ] [ BlockFlag ] "{" 
+                {
+                | ( Identifier "," )
+                | ( EnumStruct "," )
+                | ( EnumTuple "," )
+                }
+                "}"
+                ;
+
+StructDecl     = "ẹ̀wun" Identifier [ BlockFlag ] "{" { Identifier TypeHint "," }  "}" ;
+
+TupleStructDecl= "ẹ̀wun" Identifier [ BlockFlag ] "(" TypeHint { "," TypeHint } ")" ;
+
+
+Access         = ( CalledFuncOrMeth { "." CalledFuncOrMeth } [ "." Identifier ] )
+                | ( "." Identifier )
+                ;
+
+NewObj         = MemberAccess ;
+
+MemberAccess   = Access "->"  Identifier ;
+
+(* ---------------- *)
+(*  LITERALS        *)
+(* ---------------- *)
+
+MultiLineString = "'''"
+                  { /* any characters including newlines */ }
+                  "'''" ;
+
+Identifier     = /* defined in lexer */ ;
+Number         = /* numeric literal */ ;
+StringLiteral  = /* single-line or MultiLine string literal */ ;
+CharLiteral    = /* defined in lexer */ ;
+BooleanLiteral = /* boolean; defined in lexer */ ;
+
+(*    Composite or Structures Data Blocks     *)
+StructLiteral    = "àdàwun" Identifier "{" { Identifier ">>" Literal  } "}" ;
+
+TupleLiteral     = Identifier "(" { Number } ")" ;
+VectorLiteral    = Identifier "<" { Number } ">" ;
+                    
+
+ArrayLiteral    = Identifier "[" { Number } "]" ;

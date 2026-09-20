@@ -1,0 +1,71 @@
+mú Ọdún::"odù/àpapọ̀"; // :: Mostly denotes "láti inún" that is "from"; used for outsourced resources
+mú Owó::"odù/àṣùwọ̀";
+
+lo Ìṣirò;
+lo Owó;
+lo Odún;
+/*
+    A comment
+*/
+àtagbá ìdẹkin òjó_rọ̀ : irọ́; // The : operator is ni i.e "is" for Const Decl
+
+apẹ̀tẹ̀ Àdájọ́_ni ; gbangba {
+    Ọdún, Oṣù, Ọjọ́,
+    Wákàtí(8m)
+    /*
+        apẹ̀tẹ̀
+    */
+}
+
+ẹpín Ẹni ; gbangba { // A class definition
+    ìdẹ(x 32p, y ọsán); {
+       kí 32p ọjọ́_orí -> èyí : x + 4; // -> Mostly denotes "ti" that is "of"
+       kí ọsán orúkọ -> èyí : y ;
+    }
+
+    gbangba;
+    
+    ìkíni(); {
+        tí ọjọ́_orí > 50 {
+            pitú òǹsọ("Ẹ ǹlẹ́ o!, Ṣé dáadáa ni ẹ wà.");
+        }
+        àìjẹ́bẹ̀ {
+            #ìsọ("Ǹlẹ́ o {orúkọ->èyí}, báyo ni!");
+        }
+        
+        kí ọsán àáyàn: òǹgbọ́(ọsán);
+        #ìsọ(orúkọ->èyí); // àríwísí
+    } 
+}
+
+kí 8b iye : 35.0 ; pìkí gbangba// Here the : operator is jẹ́
+
+kí [8b, ọsán] àbèrèfún: ìfún();
+kí [8p. 3] oníporo: [32, 5]; pìkí
+
+itú [8b, ọsán] ìfún(){
+    kí ohun iyelọ́dún: agẹmọ(20)::Ọdún;
+    #ìsọ(oníporo[0]);
+}
+
+itú 8b ìṣíye() ; gbangba {  // A Function defination
+    #ìsọ("{iye} ni oó jẹ́ tẹ́lẹ̀");
+    kí iye_titun : 0.0 ; pìkí
+    yí iye_titun : ẹkàn()->@iye; // Call the class method
+    fún s nínún 1..5 {
+        yí iye_titun : iye_titun + 2.5 ; // Increment by 2.5
+        #ìsọ("Ìyípadà tuntun ni: {iye_titun} ní{s}");
+    }
+    padà pẹ̀lú(iye_titun); // Return the new value;
+    
+}
+
+itú gbòógì(); {
+    kí ohun èmi : Ẹni(23, "Àkànbí"); 
+    pitú ìkíni()->èmi; // The expected output is "Ǹlẹ́ o Àkànbí, báyo ni!"
+    ṣé orúkọ->èmi {
+        : "Àkànbí" ()=>{pe òǹsọ("Kú-àbọ̀ pádà, ṣé dáadáa ni?");}
+    }
+    pitú ìṣíye();
+    padà 0;
+}
