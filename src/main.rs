@@ -116,7 +116,7 @@ fn main() {
                             i += 1;
                             if flags.len() >= i + 1 {
                                 // kui main --àfojúsùn x86_64-pc-windows-gnu
-                                let target_triple = args[i].clone();
+                                let target_triple = flags[i].clone();
                                 if is_target_triple(target_triple.clone()) {
                                     àfojúsùn = Some(target_triple);
                                 } else {
