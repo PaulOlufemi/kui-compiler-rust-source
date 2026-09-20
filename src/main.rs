@@ -8,8 +8,8 @@ mod blocklevel_analyser;
 mod borrow_checker;
 mod cfg_builder;
 mod cfg_resourses;
-mod dk_expert;
 mod codegen;
+mod dk_expert;
 mod macro_expand;
 mod move_checker;
 mod name_resolver;
@@ -43,7 +43,7 @@ pub struct ComdInfo {
     pub target: Option<String>,
     pub win: bool,
     pub make: Option<BuildType>,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 // impl ComdInfo {
@@ -95,78 +95,103 @@ fn main() {
                 filename.push_str(".kui");
             }
 
-            // kui entry flags...
-            // let flags = args.split_off(2);
-
             let mut àfojúsùn: Option<String> = None;
             let mut fèrèsé = false;
             let mut ṣe: Option<BuildType> = None;
             let mut p: Option<String> = None;
 
-            // let mut i = 0;
-            // while i < flags.len() {
-
-            // }
-            
             if args.len() > 2 {
                 // means there are flags available
                 // index 2 is:
-                // kui main --àfoúsùn
+                // kui main --àfojúsùn
                 //  0    1     2
 
-                match args[2].as_str() {
-                    "--àfojúsùn" | "--afojusun" => {
-                        // kui main --àfojúsùn
-                        if args.len() >= 3 {
-                            // kui main --àfojúsùn x86_64-pc-windows-gnu
-                            let target_triple = args[3].clone();
-                            if is_target_triple(target_triple.clone()) {
-                                àfojúsùn = Some(target_triple);
-                                if args.len() >= 4 {
-                                    match args[4].as_str() {
-                                        "--ṣe" => {
-                                            parse_from_make(args.split_off(5), &mut ṣe, &mut p);
-                                        }
-                                        "--fèrèsé" => {
-                                            parse_from_win(args.split_off(5), &mut fèrèsé, &mut p);
-                                        }
-                                        "--p" => {
-                                            parse_from_name(args.split_off(5), &mut p);
-                                        }
-                                        flag => {
-                                            eprintln!("Unknown flag {}", flag);
-                                            print_usage();
-                                            process::exit(1);
-                                        }
-                                    }
+                let flags = args.split_off(2);
+                let mut i = 0;
+                while i < flags.len() {
+                    match flags[i].as_str() {
+                        "--àfojúsùn" | "--afojusun" => {
+                            // kui main --àfojúsùn
+                            //advance
+                            i += 1;
+                            if flags.len() >= i + 1 {
+                                // kui main --àfojúsùn x86_64-pc-windows-gnu
+                                let target_triple = args[i].clone();
+                                if is_target_triple(target_triple.clone()) {
+                                    àfojúsùn = Some(target_triple);
+                                } else {
+                                    eprintln!("Unsupported target triple: {}", target_triple);
+                                    print_supported_target_triple();
+
+                                    process::exit(1);
                                 }
                             } else {
-                                eprintln!("Unsupported target triple: {}", target_triple);
+                                eprintln!("Provide a target triple");
                                 print_supported_target_triple();
 
                                 process::exit(1);
                             }
-                        } else {
-                            eprintln!("Provide a target triple");
-                            print_supported_target_triple();
+                        }
+                        "--ṣe" => {
+                            i += 1;
+                            if flags.len() >= i + 1 {
+                                // àjọlò --p èlò
+                                match flags[i].as_str() {
+                                    "àjọlò" | "ajolo" => {
+                                        // kui main --ṣe àjọlò
+                                        ṣe = Some(BuildType::SharedLib);
+                                    }
+                                    "àdálò" | "adalo" => {
+                                        ṣe = Some(BuildType::StaticLib);
+                                    }
+                                    "ohun" => {
+                                        ṣe = Some(BuildType::Object);
+                                    }
+                                    oth => {
+                                        eprintln!(
+                                            "{} is not an output file type for any target",
+                                            oth
+                                        );
+                                        println!("Examples:");
+                                        println!("  --ṣe àjọlò");
+                                        println!("  --ṣe àdálò");
+                                        println!("  --ṣe ohun");
+                                    }
+                                }
+                            } else {
+                                eprintln!("Provide an output file type");
+                                println!("Examples:");
+                                println!("  --ṣe àjọlò");
+                                println!("  --ṣe àdálò");
+                                println!("  --ṣe ohun");
 
+                                process::exit(1);
+                            }
+                        }
+                        "--fèrèsé" => {
+                            i += 1;
+                            fèrèsé = true;
+                        }
+                        "--p" => {
+                            i += 1;
+                            if flags.len() >= i + 1 {
+                                // only the name supposed to remain
+                                p = Some(flags[i].clone());
+                            } else {
+                                eprintln!(
+                                    "No name provided after --p flag:"
+                                );
+                                print_usage();
+                                process::exit(1);
+                            }
+                        }
+                        flag => {
+                            eprintln!("Unknown flag {}", flag);
+                            print_usage();
                             process::exit(1);
                         }
                     }
-                    "--ṣe" => {
-                        parse_from_make(args.split_off(3), &mut ṣe, &mut p);
-                    }
-                    "--fèrèsé" => {
-                        parse_from_win(args.split_off(3), &mut fèrèsé, &mut p);
-                    }
-                    "--p" => {
-                        parse_from_name(args.split_off(3), &mut p);
-                    }
-                    flag => {
-                        eprintln!("Unknown flag {}", flag);
-                        print_usage();
-                        process::exit(1);
-                    }
+                    i += 1;
                 }
             }
 
@@ -175,115 +200,96 @@ fn main() {
                 target: àfojúsùn,
                 win: fèrèsé,
                 make: ṣe,
-                name: p
+                name: p,
             };
 
             compile_file(cli);
         }
     }
-
-    // if args.len() < 3 {
-    //     eprintln!("Error: No source file provided");
-    //     process::exit(1);
-    // }
-
-    // match command {
-    //     "c" => {
-
-    //     }
-    //     "r" => {
-    //         run_file(&filename);
-    //     }
-    //     _ => {
-    //         eprintln!("Unknown command: {}", command);
-    //         print_usage();
-    //         process::exit(0);
-    //     }
-    // }
 }
 
-fn parse_from_make(mut args: Vec<String>, make: &mut Option<BuildType>, name: &mut Option<String>) {
-    // àjọlò --p èlò
-    if args.len() > 1 {
-        match args[0].as_str() {
-            "àjọlò" | "ajolo" => {
-                // kui main --ṣe àjọlò
-                *make = Some(BuildType::SharedLib);
-                if args.len() >= 2 {
-                    match args[2].as_str() {
-                        "--p" => {
-                            parse_from_name(args.split_off(2), name);
-                        }
-                        oth => {
-                            eprintln!("Unknown flag {}", oth);
-                            print_usage();
-                            process::exit(1);
-                        }
-                    }
-                }
-            }
-            "àdálò" | "adalo" => {
-                *make = Some(BuildType::StaticLib);
-            }
-            "ohun" => {
-                *make = Some(BuildType::Object);
-            }
-            oth => {
-                eprintln!("{} is not an output file type", oth);
-                println!("Examples:");
-                println!("  --ṣe àjọlò");
-                println!("  --ṣe àdálò");
-                println!("  --ṣe ohun");
-            }
-        }
-    } else {
-        eprintln!("Provide an output file type");
-        println!("Examples:");
-        println!("  --ṣe àjọlò");
-        println!("  --ṣe àdálò");
-        println!("  --ṣe ohun");
+// fn parse_from_make(mut args: Vec<String>, make: &mut Option<BuildType>, name: &mut Option<String>) {
+//     // àjọlò --p èlò
+//     if args.len() > 1 {
+//         match args[0].as_str() {
+//             "àjọlò" | "ajolo" => {
+//                 // kui main --ṣe àjọlò
+//                 *make = Some(BuildType::SharedLib);
+//                 if args.len() >= 2 {
+//                     match args[2].as_str() {
+//                         "--p" => {
+//                             parse_from_name(args.split_off(2), name);
+//                         }
+//                         oth => {
+//                             eprintln!("Unknown flag {}", oth);
+//                             print_usage();
+//                             process::exit(1);
+//                         }
+//                     }
+//                 }
+//             }
+//             "àdálò" | "adalo" => {
+//                 *make = Some(BuildType::StaticLib);
+//             }
+//             "ohun" => {
+//                 *make = Some(BuildType::Object);
+//             }
+//             oth => {
+//                 eprintln!("{} is not an output file type", oth);
+//                 println!("Examples:");
+//                 println!("  --ṣe àjọlò");
+//                 println!("  --ṣe àdálò");
+//                 println!("  --ṣe ohun");
+//             }
+//         }
+//     } else {
+//         eprintln!("Provide an output file type");
+//         println!("Examples:");
+//         println!("  --ṣe àjọlò");
+//         println!("  --ṣe àdálò");
+//         println!("  --ṣe ohun");
 
-        process::exit(1);
-    }
-}
-fn parse_from_win(mut args: Vec<String>, win: &mut bool, name: &mut Option<String>) {
-    // after --fèrèsé
-    // --p app
-    *win = true;
+//         process::exit(1);
+//     }
+// }
+// fn parse_from_win(mut args: Vec<String>, win: &mut bool, name: &mut Option<String>) {
+//     // after --fèrèsé
+//     // --p app
+//     *win = true;
 
-    if args.len() > 1 {
-        match args[0].as_str() {
-            "--p" => {
-                parse_from_name(args.split_off(1), name);
-            }
-            oth => {
-                eprintln!("Unknown flag {}", oth);
-                print_usage();
-                process::exit(1);
-            }
-        }
-    }
-}
-fn parse_from_name(args: Vec<String>, name: &mut Option<String>) {
-    if args.len() == 1 {
-        // only the name supposed to remain
-        *name = Some(args[0].clone());
-    } else {
-        eprintln!(
-            "Unexpected argument{}:",
-            if args.len() > 2 { "s" } else { "" }
-        );
-        let mut i = 0;
-        for each in args {
-            if i != 0 {
-                eprintln!(" {}", each);
-            }
-            i += 1;
-        }
-        print_usage();
-        process::exit(1);
-    }
-}
+//     if args.len() > 1 {
+//         match args[0].as_str() {
+//             "--p" => {
+//                 parse_from_name(args.split_off(1), name);
+//             }
+//             oth => {
+//                 eprintln!("Unknown flag {}", oth);
+//                 print_usage();
+//                 process::exit(1);
+//             }
+//         }
+//     }
+// }
+// fn parse_from_name(args: Vec<String>, name: &mut Option<String>) {
+//     if args.len() == 1 {
+//         // only the name supposed to remain
+//         *name = Some(args[0].clone());
+//     } else {
+//         eprintln!(
+//             "Unexpected argument{}:",
+//             if args.len() > 2 { "s" } else { "" }
+//         );
+//         let mut i = 0;
+//         for each in args {
+//             if i != 0 {
+//                 eprintln!(" {}", each);
+//             }
+//             i += 1;
+//         }
+//         print_usage();
+//         process::exit(1);
+//     }
+// }
 
 fn is_target_triple(target_triple: String) -> bool {
     if target_triple == format!("x86_64-pc-windows-gnu") ||
