@@ -1,9 +1,9 @@
-use crate::scanner::Pos;
-use crate::{dk_expert, llvm::*, BuildType, ComdInfo};
+use serde::Deserialize;
 use colored::Colorize;
 use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipArchive;
+
 // use is_terminal::IsTerminal;as
 use std::collections::HashMap;
 use std::ffi::c_char;
@@ -20,6 +20,8 @@ use crate::macro_expand::AstMacroExpandsion;
 use crate::parser::{Error, Ident, LibNextedLevel, ModPath, Parser, TopLevel}; // Import the parser // StaticBlock, StaticLevel,
 use crate::scanner::{LexedSelf, Span, Token};
 use crate::toplevel_analyser::Analyser;
+use crate::{dk_expert, llvm::*, BuildType, ComdInfo};
+use crate::scanner::Pos;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -76,7 +78,7 @@ pub enum NameSpace {
     },
     Lib {
         name: String,
-        manifest: String,
+        manifest: DkManifest,
         entry: ModCFG,
         src: HashMap<String, ModCFG>,
     },
@@ -123,6 +125,23 @@ pub struct SemanticError {
     pub messages: Vec<String>,
     pub hints: Vec<ErrorHint>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct DkManifest {
+    package: Package,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct Package {
+    name: String,
+    version: String,
+    authors: String,
+    license: String,
+    entry: String,
+    dependencies: Vec<String>
 }
 
 pub fn handle_err(err: Vec<Error>, lines: HashMap<String, Vec<String>>) {
@@ -952,12 +971,12 @@ pub fn compile_file(cli: ComdInfo) {
 
                     match archive {
                         Ok(mut contents) => {
-                            let mut manifest = String::new();
+                            let mut manifest_str = String::new();
                             {
                                 let mut get_manifest = contents.by_name(&"lib.toml");
 
                                 if let Ok(manifest_file) = &mut get_manifest {
-                                    let gotten = manifest_file.read_to_string(&mut manifest);
+                                    let gotten = manifest_file.read_to_string(&mut manifest_str);
 
                                     if let Err(err) = gotten {
                                         panic!("Problem parsing {}: {}", lib.ident, err);
@@ -967,9 +986,40 @@ pub fn compile_file(cli: ComdInfo) {
                                 }
                             }
 
+                            let manifest_ret: Result<DkManifest, toml::de::Error> = toml::from_str(&manifest_str);
+
+                            let manifest;
+                            if let Ok(m) = manifest_ret {
+                                manifest = m;
+                            } else if let Err(err) = manifest_ret {
+                                eprintln!("{}: {}", lib.ident, err);
+                                manifest = DkManifest {
+                                    package: Package {
+                                        name: String::new(),
+                                        authors: String::new(),
+                                        version: String::new(),
+                                        license: String::new(),
+                                        entry: String::new(),
+                                        dependencies: vec![]
+                                    },
+                                };
+                            } else {
+                                eprintln!("Manifest parsing error");
+                                manifest = DkManifest {
+                                    package: Package {
+                                        name: String::new(),
+                                        authors: String::new(),
+                                        version: String::new(),
+                                        license: String::new(),
+                                        entry: String::new(),
+                                        dependencies: vec![]
+                                    },
+                                };
+                            }
+
                             let mut entry = ModCFG::new();
                             {
-                                let mut get_entry = contents.by_name(&"main.kk");
+                                let mut get_entry = contents.by_name(&format!("{}.kk", manifest.package.entry));
 
                                 if let Ok(entry_file) = &mut get_entry {
                                     let mut bytes = vec![];
@@ -980,14 +1030,16 @@ pub fn compile_file(cli: ComdInfo) {
 
                                         entry = kk_reader.gen_mod();
                                     } else if let Err(err) = gotten {
-                                        panic!("Problem reading main.kk: {}", err);
+
+                                        panic!("Problem reading {}.kk: {}", manifest.package.entry, err);
                                     } else {
                                         panic!("Problem parsing {}", lib.ident)
                                     }
                                 } else {
                                     println!(
-                                        "Unable to read lib {} entry module: main.kk",
-                                        lib.ident
+                                        "Unable to read lib {} entry module: {}.kk",
+                                        lib.ident,
+                                        manifest.package.entry
                                     );
                                 }
                             }
@@ -1061,15 +1113,18 @@ pub fn compile_file(cli: ComdInfo) {
                     let mut version = String::new();
                     println!("\rEnter version: ");
                     io::stdin().read_line(&mut version).unwrap();
+                    version.truncate(version.trim_end().len());
 
                     let mut authors = String::new();
                     println!("\rEnter author names: ");
                     io::stdin().read_line(&mut authors).unwrap();
+                    authors.truncate(authors.trim_end().len());
 
                     let mut license = String::new();
                     println!("\rEnter license: ");
                     io::stdin().read_line(&mut license).unwrap();
-                    io::stdout().flush().unwrap();
+                    license.truncate(license.trim_end().len());
+                    // io::stdout().flush().unwrap();
 
                     let from_file = fs::File::create(format!("{}.dk", base_name));
 
@@ -1080,24 +1135,22 @@ pub fn compile_file(cli: ComdInfo) {
                             let options = SimpleFileOptions::default()
                                 .compression_method(CompressionMethod::Deflated);
 
-                            let mut toml_content = format!("[package]\nname = \"{}\"\nversion = \"{}\"\nauthors = \"{}\"\nlicense = \"{}\"\n",
+                            let mut toml_content =
+                            format!("[package]\nname = \"{}\"\nversion = \"{}\"\nauthors = \"{}\"\nlicense = \"{}\"\nentry = \"{}\"\n",
                                 base_name,
                                 version,
                                 authors,
-                                license
+                                license,
+                                name
                             );
 
-                            let mut dependency_section = format!("[dependencies]");
+                            let mut dependencies = format!("dependencies = [");
                             for each_resource in &cfg {
                                 match each_resource.1 {
                                     Resource::File(mod_cfg) => {
-                                        if *each_resource.0 == name {
-                                            // The entry file
-                                            let _ = zip.start_file("main.kk", options);
-                                        } else {
-                                            let path = format!("src/{}.kk", each_resource.0);
-                                            let _ = zip.start_file(path, options);
-                                        }
+                                        let path = format!("{}.kk", each_resource.0);
+                                        let _ = zip.start_file(path, options);
+
                                         let mut bin = dk_expert::KkWriter::new(&mod_cfg);
                                         bin.gen_from_mod();
                                         let _ = zip.write_all(&bin.buf);
@@ -1105,13 +1158,14 @@ pub fn compile_file(cli: ComdInfo) {
                                     Resource::Folder(_) => {}
                                     Resource::Package { .. } => {
                                         // add it to lib.toml dependency section
-                                        dependency_section
-                                            .push_str(&format!("\n{}", each_resource.0));
+                                        dependencies
+                                            .push_str(&format!("\"{}\", ", each_resource.0));
                                     }
                                 }
                             }
+                            dependencies.push_str(&format!("]\n"));
 
-                            toml_content.push_str(&dependency_section);
+                            toml_content.push_str(&dependencies);
 
                             // add manifest file
                             let _ = zip.start_file("lib.toml", options);
