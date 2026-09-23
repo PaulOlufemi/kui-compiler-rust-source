@@ -10,13 +10,9 @@ use crate::{
 
 #[allow(dead_code)]
 #[repr(u8)]
-pub enum SectionKind {
-    Exports = 0,
-    Imports = 1,
-    Types = 2,
-    CFG = 3,
-    LLVMBitcode = 4,
-    Debug = 5,
+pub enum KkFormatTag {
+    CFG = 0,
+    Docs = 1,
 }
 
 #[allow(dead_code)]
@@ -809,6 +805,8 @@ impl<'a> KkWriter<'a> {
                 }
 
                 let mut ident_section = vec![];
+                // add the format tag as cfg
+                ident_section.extend_from_slice(&(KkFormatTag::CFG as u8).to_le_bytes());
                 ident_section.extend_from_slice(&(TopLevelTag::Idents as u8).to_le_bytes());
 
                 ident_section.extend_from_slice(&(self.idents_buf.len() as u32).to_le_bytes());
@@ -1222,7 +1220,9 @@ impl<'a> KkReader<'a> {
 
     pub fn gen_mod(&mut self) -> ModCFG {
         let mut result = ModCFG::new();
-
+        if self.read_u8() != 0 {
+            panic!("Expected a CFG binary but found something else");
+        }
         while self.cursor < self.buf.len() {
             let byte = self.read_u8();
             // check section tag
